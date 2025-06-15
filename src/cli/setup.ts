@@ -1,0 +1,459 @@
+import prompts from 'prompts';
+import fs from 'fs';
+import path from 'path';
+import { LinearDiscoveryClient } from '../client';
+import { ConfigManager, stateNameToFolderName, getWorkflowTypeOrder } from '../config';
+import { LinearSyncConfig, StatusMapping } from '../types';
+
+export async function setupCommand(): Promise<void> {
+  console.log('🚀 Setting up md-linear-sync...\n');
+
+  try {
+    // Step 1: Get and validate API key
+    const apiKey = await getAndValidateApiKey();
+    
+    // Step 2: Select team
+    const discoveryClient = new LinearDiscoveryClient(apiKey);
+    const selectedTeam = await selectTeam(discoveryClient);
+    
+    // Step 3: Select project (optional)
+    const selectedProject = await selectProject(discoveryClient, selectedTeam.id);
+    
+    // Step 4: Get workflow states and labels
+    console.log('\n🔍 Fetching workflow states and labels...');
+    const [workflowStates, teamLabels] = await Promise.all([
+      discoveryClient.getWorkflowStates(selectedTeam.id),
+      discoveryClient.getTeamLabels(selectedTeam.id)
+    ]);
+    console.log(`📋 Found ${workflowStates.length} workflow states for ${selectedTeam.name}:`);
+    console.log(`🏷️  Found ${teamLabels.length} team labels`);
+    
+    // Group states by workflow type and sort
+    const statesByType = new Map<string, typeof workflowStates>();
+    for (const state of workflowStates) {
+      if (!statesByType.has(state.type)) {
+        statesByType.set(state.type, []);
+      }
+      statesByType.get(state.type)!.push(state);
+    }
+    
+    // Sort types by desired order and create status mapping
+    const statusMapping: Record<string, StatusMapping> = {};
+    const sortedTypes = Array.from(statesByType.keys()).sort((a, b) => {
+      return getWorkflowTypeOrder(a) - getWorkflowTypeOrder(b);
+    });
+    
+    for (const type of sortedTypes) {
+      const typeOrder = getWorkflowTypeOrder(type);
+      const states = statesByType.get(type)!;
+      
+      // Sort states within type by position
+      states.sort((a, b) => a.position - b.position);
+      
+      for (let i = 0; i < states.length; i++) {
+        const state = states[i];
+        const folderName = stateNameToFolderName(state.name, state.type, typeOrder, i);
+        statusMapping[state.name] = {
+          id: state.id,
+          folder: folderName,
+          type: state.type
+        };
+        console.log(`   ${state.name} (${state.type}) → ${folderName}/`);
+      }
+    }
+    
+    // Step 5: Generate label mapping
+    const labelMapping: Record<string, { id: string; color: string; description?: string }> = {};
+    for (const label of teamLabels) {
+      labelMapping[label.name] = {
+        id: label.id,
+        color: label.color,
+        description: label.description || undefined
+      };
+    }
+    
+    // Step 6: Create configuration
+    const config: LinearSyncConfig = {
+      teamId: selectedTeam.id,
+      teamName: selectedTeam.name,
+      projectId: selectedProject.id, // Now guaranteed to exist
+      projectName: selectedProject.name,
+      statusMapping,
+      labelMapping,
+      timezone: 'Asia/Singapore',
+      lastUpdated: new Date().toISOString()
+    };
+    
+    await ConfigManager.saveConfig(config);
+    console.log('\n✅ Configuration saved to md-linear-sync/.linear-sync.json');
+    
+    // Step 6: Create directory structure
+    await createDirectoryStructure(Object.values(statusMapping).map(s => s.folder));
+    
+    // Step 7: Create .env file with the API key
+    await createEnvFile(apiKey);
+    console.log('✅ Created .env file with your API key');
+    
+    // Step 8: Also create .env.example for reference
+    ConfigManager.createEnvExample();
+    console.log('✅ Created .env.example template');
+    
+    // Step 9: Create ticket templates
+    await createTicketTemplate(config);
+    await createTicketCreationCommand(config);
+    console.log('✅ Created .linear-ticket-format.md template');
+    console.log('✅ Created linear-ticket-creation.md slash command');
+    
+    console.log('\n🎉 Setup complete!');
+    console.log('\nNext steps:');
+    console.log('1. Run "md-linear-sync import" to import existing tickets');
+    console.log('2. Start syncing with "md-linear-sync push" and "md-linear-sync pull"');
+    console.log('3. Create new tickets using the .linear-ticket-format.md template');
+    
+  } catch (error) {
+    console.error('\n❌ Setup failed:', error instanceof Error ? error.message : 'Unknown error');
+    process.exit(1);
+  }
+}
+
+async function getAndValidateApiKey(): Promise<string> {
+  const response = await prompts({
+    type: 'password',
+    name: 'apiKey',
+    message: 'Enter your Linear API key:',
+    validate: (value: string) => {
+      if (!value || value.trim().length === 0) {
+        return 'API key is required';
+      }
+      return true;
+    }
+  });
+  
+  if (!response.apiKey) {
+    console.log('\n❌ Setup cancelled');
+    process.exit(0);
+  }
+  
+  console.log('\n🔍 Validating API key...');
+  const discoveryClient = new LinearDiscoveryClient(response.apiKey);
+  const validation = await discoveryClient.validateApiKey();
+  
+  if (!validation.valid) {
+    throw new Error('Invalid API key. Please check your Linear API key and try again.');
+  }
+  
+  console.log(`✅ API key valid! Hello, ${validation.user?.name || 'Linear user'}`);
+  return response.apiKey;
+}
+
+async function selectTeam(client: LinearDiscoveryClient) {
+  console.log('\n👥 Fetching your teams...');
+  const teams = await client.getTeams();
+  
+  if (teams.length === 0) {
+    throw new Error('No teams found. You need access to at least one Linear team.');
+  }
+  
+  if (teams.length === 1) {
+    console.log(`✅ Using team: ${teams[0].name} (${teams[0].key})`);
+    return teams[0];
+  }
+  
+  const response = await prompts({
+    type: 'select',
+    name: 'teamId',
+    message: 'Select a team:',
+    choices: teams.map(team => ({
+      title: `${team.name} (${team.key})`,
+      value: team.id,
+      description: `Team ID: ${team.id}`
+    }))
+  });
+  
+  if (!response.teamId) {
+    console.log('\n❌ Setup cancelled');
+    process.exit(0);
+  }
+  
+  const selectedTeam = teams.find(t => t.id === response.teamId)!;
+  console.log(`✅ Selected team: ${selectedTeam.name} (${selectedTeam.key})`);
+  return selectedTeam;
+}
+
+async function selectProject(client: LinearDiscoveryClient, teamId: string) {
+  console.log('\n📁 Fetching projects...');
+  const projects = await client.getProjects(teamId);
+  
+  if (projects.length === 0) {
+    throw new Error('No projects found for this team. Please create a project in Linear first.');
+  }
+  
+  const choices = projects.map(project => ({
+    title: project.name,
+    value: project.id,
+    description: project.description || `Project ID: ${project.id}`
+  }));
+  
+  const response = await prompts({
+    type: 'select',
+    name: 'projectId',
+    message: 'Select a project:',
+    choices
+  });
+  
+  if (!response.projectId) {
+    console.log('\n❌ Setup cancelled');
+    process.exit(0);
+  }
+  
+  const selectedProject = projects.find(p => p.id === response.projectId)!;
+  console.log(`✅ Selected project: ${selectedProject.name}`);
+  return selectedProject;
+}
+
+async function createDirectoryStructure(folderNames: string[]): Promise<void> {
+  // Create md-linear-sync base directory
+  const baseDir = path.join(process.cwd(), 'md-linear-sync');
+  
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+  
+  // Create linear-tickets subdirectory
+  const linearDir = path.join(baseDir, 'linear-tickets');
+  
+  if (!fs.existsSync(linearDir)) {
+    fs.mkdirSync(linearDir, { recursive: true });
+  }
+  
+  for (const folderName of folderNames) {
+    const folderPath = path.join(linearDir, folderName);
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+  }
+  
+  // Create new-tickets directory
+  const newTicketsDir = path.join(baseDir, 'new-tickets');
+  if (!fs.existsSync(newTicketsDir)) {
+    fs.mkdirSync(newTicketsDir, { recursive: true });
+  }
+  
+  console.log(`✅ Created directory structure: md-linear-sync/linear-tickets/${folderNames.join('/, md-linear-sync/linear-tickets/')}/`);
+  console.log(`✅ Created new-tickets directory: md-linear-sync/new-tickets/`);
+  
+  // Create a README in the linear-tickets directory
+  const readmeContent = `# Linear Tickets
+
+This directory contains Linear tickets organized by status.
+
+Folders:
+${folderNames.map(name => `- \`${name}/\` - Tickets in this status`).join('\n')}
+
+## Usage
+
+- Move files between folders to change ticket status
+- Run \`md-linear-sync push\` to sync local changes to Linear
+- Run \`md-linear-sync pull\` to sync Linear changes to local files
+`;
+  
+  fs.writeFileSync(path.join(linearDir, 'README.md'), readmeContent);
+  
+  // Create README in new-tickets directory
+  const newTicketsReadme = `# New Tickets
+
+Create markdown files in this directory to create Linear tickets.
+
+## Format
+
+Each file should have YAML frontmatter with ticket metadata:
+
+\`\`\`markdown
+---
+title: Your ticket title
+status: Todo
+priority: 2
+labels: [Feature, Backend]
+parent_id: PAP-123  # Optional parent ticket
+---
+
+Your ticket description here...
+\`\`\`
+
+## Usage
+
+1. Create markdown files with proper frontmatter
+2. Run \`md-linear-sync validate filename.md\` to check format
+3. Run \`md-linear-sync create\` to create all tickets in Linear
+4. Files automatically move to appropriate status folders
+`;
+  
+  fs.writeFileSync(path.join(newTicketsDir, 'README.md'), newTicketsReadme);
+}
+
+async function createEnvFile(apiKey: string): Promise<void> {
+  const envPath = path.join(process.cwd(), 'md-linear-sync', '.env');
+  
+  // Check if .env already exists
+  if (fs.existsSync(envPath)) {
+    console.log('ℹ️  .env file already exists, not overwriting');
+    return;
+  }
+  
+  const envContent = `# Linear API Configuration
+LINEAR_API_KEY=${apiKey}
+
+# Optional: Slack Notifications  
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/slack/webhook
+
+# Optional: Webhook Security
+# WEBHOOK_SECRET=your_webhook_secret_here
+`;
+
+  fs.writeFileSync(envPath, envContent);
+}
+
+async function createTicketTemplate(config: any): Promise<void> {
+  const templatePath = path.join(process.cwd(), 'md-linear-sync', '.linear-ticket-format.md');
+  
+  // Check if template already exists
+  if (fs.existsSync(templatePath)) {
+    console.log('ℹ️  .linear-ticket-format.md already exists, not overwriting');
+    return;
+  }
+  
+  const templateContent = `---
+title: "Your Ticket Title Here"
+status: Todo
+priority: 3
+labels: [Feature]
+parent_id: ""
+---
+
+# Ticket Description
+
+Brief description of what this ticket is about.
+
+## Acceptance Criteria
+
+- [ ] First acceptance criteria
+- [ ] Second acceptance criteria  
+- [ ] Third acceptance criteria
+
+## Additional Details
+
+Any additional context, background information, or implementation notes.
+
+---
+
+**Instructions:** 
+- Fill in your own ticket content above
+- Remove this instructions section before creating the ticket
+- Use \`linear-ticket-creation.md\` slash command for Claude Code integration
+`;
+
+  fs.writeFileSync(templatePath, templateContent);
+}
+
+async function createTicketCreationCommand(config: any): Promise<void> {
+  const commandPath = path.join(process.cwd(), 'md-linear-sync', 'linear-ticket-creation.md');
+  
+  // Check if command already exists
+  if (fs.existsSync(commandPath)) {
+    console.log('ℹ️  linear-ticket-creation.md already exists, not overwriting');
+    return;
+  }
+  
+  // Generate available statuses and labels for strict validation
+  const availableStatuses = Object.keys(config.statusMapping);
+  const availableLabels = Object.keys(config.labelMapping);
+  
+  const commandContent = `# Linear Ticket Creation
+
+This command creates Linear tickets from markdown files with strict frontmatter validation and automatic dependency resolution.
+
+## Usage
+
+When user asks to create a Linear ticket from a markdown file:
+
+1. **Validate Prerequisites**:
+   \`\`\`bash
+   cd /home/teren41/environment/weaver-base/md-linear-sync && npm run build
+   cd /home/teren41/environment/weaver-base/test-md-linear-sync
+   \`\`\`
+
+2. **Create/Validate Files**:
+   - Files must be located in current directory or subdirectories
+   - Use \`.linear-ticket-format.md\` as content template reference
+   - **CRITICAL**: Always validate with JSON output first: \`npx md-linear-sync validate filename.md --json\`
+   - **If validation fails**: Read error messages carefully and fix frontmatter, then re-validate
+   - **Only after validation passes**: Create ticket: \`npx md-linear-sync create\`
+
+## STRICT Frontmatter Requirements
+
+### Required Fields:
+- **title**: String - The ticket title (cannot be empty)
+
+### Optional Fields:
+- **status**: Must be exactly one of: ${availableStatuses.join(', ')}
+- **priority**: Integer 0-4 (0=No priority, 1=Urgent, 2=High, 3=Normal, 4=Low)
+- **labels**: Array containing only: ${availableLabels.join(', ')}
+- **parent_id**: Either Linear ticket ID (format: [A-Z]+-\\d+) or relative file path to parent markdown file
+
+### Parent-Child Relationships:
+- **Linear ticket ID**: \`parent_id: "PAP-123"\` - References existing Linear ticket
+- **File path**: \`parent_id: "../parent-feature.md"\` - References another markdown file that will be created as parent
+- **Child tickets** automatically get named with dot notation: \`PAP-123.456-child-task.md\`
+
+### Frontmatter Format:
+\`\`\`yaml
+---
+title: "Exact title string"
+status: Todo
+priority: 3
+labels: [Feature, Improvement]
+parent_id: "PAP-123"
+---
+\`\`\`
+
+## File Location Rules
+
+- **Current directory**: \`filename.md\`
+- **Subdirectories**: \`subdir/filename.md\`
+- **Parent references**: \`../parent-file.md\` (for parent_id)
+
+## Automatic Processing
+
+1. **Validation**: Checks frontmatter against current Linear configuration
+2. **Dependency Resolution**: 
+   - Linear ticket IDs verified to exist
+   - File paths resolved and checked for linear_id metadata
+   - Missing dependencies result in warnings, not errors
+3. **Ticket Creation**: Full metadata applied including labels, status, priority, parent
+4. **File Updates**: Linear metadata added (linear_id, created_at, updated_at, url)
+5. **File Movement**: Automatically moved to appropriate status folder (\`md-linear-sync/linear-tickets/{status-folder}/\`)
+
+## Error Handling
+
+- Invalid frontmatter values prevent ticket creation
+- Missing parent dependencies generate warnings but don't block creation
+- Files are only moved after successful Linear ticket creation
+- All validation errors are reported before any API calls
+
+## Integration Commands
+
+- \`npx md-linear-sync validate filename.md\` - Check file validity
+- \`npx md-linear-sync validate filename.md --json\` - JSON validation output
+- \`npx md-linear-sync create filename.md --dry-run\` - Preview what would be created
+- \`npx md-linear-sync create filename.md\` - Create the ticket
+
+## Content Template Reference
+
+Refer to \`.linear-ticket-format.md\` for proper ticket content structure including:
+- Description format
+- Acceptance criteria layout
+- Additional details sections
+`;
+
+  fs.writeFileSync(commandPath, commandContent);
+}

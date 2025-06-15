@@ -1,0 +1,66 @@
+# Source files (only publish dist/)
+src/
+tsconfig.json
+*.tsbuildinfo
+
+# Development files
+.env*
+.vscode/
+.idea/
+
+# Test files and data
+test-tickets/
+*.test.ts
+*.spec.ts
+
+# Build and development tools
+eslint.config.js
+.eslintcache
+
+# Documentation and planning
+planning/
+docs/
+
+# Git and version control
+.git/
+.gitignore
+
+# Logs and temporary files
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime data
+pids/
+
+# Coverage and testing
+coverage/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cache directories
+.cache/
+.npm
+node_modules/
+
+# Optional files
+.node_repl_history
+.yarn-integrity
+*.tgz
+
+# Local configuration and secrets
+.linear-sync.json
+.linear-sync.json.backup
+linear/
+new-tickets/
+.linear-ticket-format.md
+linear-create-errors.log
