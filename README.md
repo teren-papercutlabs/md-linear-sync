@@ -24,8 +24,8 @@ md-linear-sync import
 # 4. Edit files, then sync changes
 md-linear-sync push PAP-431
 
-# 5. Start real-time sync (optional)
-md-linear-sync start-listen
+# 5. Start bidirectional sync (optional)
+md-linear-sync start-sync
 ```
 
 Your Linear tickets are now accessible as markdown files organized by status.
@@ -140,8 +140,9 @@ md-linear-sync/
 │   └── done/
 ├── new-tickets/               # For creating new tickets
 ├── .linear-ticket-format.md   # Template to be filled in with your desired ticket format
+├── create-linear-ticket.md    # Claude Code slash command
 ├── .env                       # API key storage
-└── linear-ticket-creation.md  # Claude Code slash command
+└── CLAUDE.md                  # AI context file (workflow guidance)
 ```
 
 ### 4. Import Existing Tickets
@@ -152,15 +153,20 @@ md-linear-sync import
 
 This fetches all tickets from your Linear project and creates markdown files organized by status.
 
-### 5. Real-time Sync Setup (Optional)
+### 5. Bidirectional Sync Setup (Optional)
 
-For automatic sync when Linear changes occur:
+For automatic sync in both directions:
 
 ```bash
-md-linear-sync start-listen
+md-linear-sync start-sync
 ```
 
-This creates an ngrok tunnel to your local machine, registers a webhook with Linear, and updates local files when Linear tickets change. The system auto-restarts to handle ngrok session limits.
+This enables:
+- **File watching**: Moving files between status folders automatically updates Linear ticket status
+- **Webhook sync**: Linear changes automatically update local files
+- **Real-time updates**: Comments, status changes, and ticket creation sync immediately
+
+The system uses ngrok tunneling and auto-restarts to handle session limits.
 
 ### 6. Slack Notifications (Optional)
 
@@ -188,7 +194,9 @@ Work with your AI coding assistant to break down features into tickets.
 /create-linear-ticket "Implement user authentication"
 ```
 
-**Other AI tools**: Feed the contents of `md-linear-sync/linear-ticket-creation.md` as a prompt to your agent. This file contains strict validation rules and examples.
+**Other AI tools**: Feed the contents of `md-linear-sync/create-linear-ticket.md` as a prompt to your agent. This file contains strict validation rules and examples.
+
+**AI Context**: The `CLAUDE.md` file created during setup provides comprehensive workflow guidance for AI agents. Copy this to your AI tool's context files (e.g., .cursorrules, .ai-context) if not using Claude Code.
 
 ### 3. Agent validates and creates tickets
 
@@ -274,15 +282,18 @@ md-linear-sync validate md-linear-sync/new-tickets/feature.md --json
 
 Refresh configuration with latest Linear team data (workflow states, labels).
 
-### Real-time Sync
+### Bidirectional Sync
 
-#### `md-linear-sync start-listen`
+#### `md-linear-sync start-sync`
 
-Start webhook listener for real-time sync from Linear to local files.
+Start bidirectional sync daemon that enables:
+- **File watching**: Moving files between folders automatically updates Linear ticket status
+- **Webhook listener**: Real-time sync from Linear to local files
+- **Auto-restart**: Handles ngrok session limits automatically
 
-#### `md-linear-sync stop-listen`
+#### `md-linear-sync stop-sync`
 
-Stop webhook listener.
+Stop bidirectional sync daemon.
 
 ### Utilities
 

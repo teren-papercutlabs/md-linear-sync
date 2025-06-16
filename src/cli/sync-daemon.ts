@@ -2,25 +2,28 @@ import ngrok from 'ngrok';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import * as chokidar from 'chokidar';
 import { LinearSyncClient } from '../client';
 import { ConfigManager } from '../config';
-import { pullSingleTicket } from './sync';
+import { pullSingleTicket, pushSingleTicket } from './sync';
 import { RetryManager } from '../utils/RetryManager';
 import { SlackNotificationServiceImpl } from '../services/SlackNotificationService';
 
-class WebhookListener {
+class SyncDaemon {
   private ngrokUrl: string = '';
   private webhookId: string = '';
   private server: any;
   private restartTimer: NodeJS.Timeout | null = null;
   private slackService: SlackNotificationServiceImpl;
+  private fileWatcher: chokidar.FSWatcher | null = null;
+  private moveDebounceMap: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     this.slackService = SlackNotificationServiceImpl.getInstance();
   }
 
   async start() {
-    console.log('🚀 Starting webhook listener...');
+    console.log('🚀 Starting bidirectional sync daemon...');
     
     // Start initial session
     await this.startSession();
@@ -121,8 +124,10 @@ class WebhookListener {
       }
     });
 
-    this.server = app.listen(3001, () => {
+    this.server = app.listen(3001, async () => {
       console.log('🎯 Webhook server listening on port 3001');
+      // Start file watcher for bidirectional sync
+      await this.startFileWatcher();
     });
   }
 
@@ -324,17 +329,95 @@ class WebhookListener {
     }
   }
 
-  private savePID() {
+  savePID() {
     fs.writeFileSync('.webhook-listener.pid', process.pid.toString());
   }
 
+  private async startFileWatcher() {
+    const linearTicketsDir = path.join(process.cwd(), 'linear-tickets');
+    
+    if (!fs.existsSync(linearTicketsDir)) {
+      console.log('📁 No linear-tickets directory found, skipping file watcher');
+      return;
+    }
+
+    console.log('👀 Starting file watcher for local changes...');
+    
+    this.fileWatcher = chokidar.watch(linearTicketsDir, {
+      ignored: /(^|[\/\\])\../, // ignore dotfiles
+      persistent: true,
+      ignoreInitial: true
+    });
+
+    this.fileWatcher.on('add', (filePath: string) => this.handleFileMove(filePath, 'added'));
+    this.fileWatcher.on('unlink', (filePath: string) => this.handleFileMove(filePath, 'removed'));
+    
+    console.log('✅ File watcher started - local file moves will sync to Linear');
+  }
+
+  private async handleFileMove(filePath: string, action: 'added' | 'removed') {
+    // Only process .md files, ignore README.md
+    if (!filePath.endsWith('.md') || filePath.endsWith('README.md')) {
+      return;
+    }
+
+    // Extract ticket ID from filename
+    const filename = path.basename(filePath);
+    const ticketIdMatch = filename.match(/^([A-Z]+-\d+)/);
+    
+    if (!ticketIdMatch) {
+      return;
+    }
+
+    const ticketId = ticketIdMatch[1];
+    
+    // Debounce moves (wait 2 seconds for bulk operations)
+    const debounceKey = ticketId;
+    if (this.moveDebounceMap.has(debounceKey)) {
+      clearTimeout(this.moveDebounceMap.get(debounceKey)!);
+    }
+
+    const timeoutId = setTimeout(async () => {
+      this.moveDebounceMap.delete(debounceKey);
+      
+      if (action === 'added') {
+        try {
+          console.log(`📂 File moved: ${filename} - syncing status to Linear...`);
+          
+          const config = await ConfigManager.loadConfig();
+          const envConfig = ConfigManager.loadEnvironmentConfig();
+          const client = new LinearSyncClient(envConfig.linear.apiKey);
+          
+          await pushSingleTicket(ticketId, client, config);
+          console.log(`✅ Synced ${ticketId} status to Linear`);
+        } catch (error) {
+          console.error(`❌ Failed to sync ${ticketId}:`, error instanceof Error ? error.message : 'Unknown error');
+        }
+      }
+    }, 2000);
+
+    this.moveDebounceMap.set(debounceKey, timeoutId);
+  }
+
   async stop() {
-    console.log('🛑 Stopping webhook listener...');
+    console.log('🛑 Stopping sync daemon...');
     
     // Clear timer
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
     }
+
+    // Stop file watcher
+    if (this.fileWatcher) {
+      await this.fileWatcher.close();
+      console.log('🛑 File watcher stopped');
+    }
+
+    // Clear debounce timers
+    for (const timeout of this.moveDebounceMap.values()) {
+      clearTimeout(timeout);
+    }
+    this.moveDebounceMap.clear();
     
     // Stop server
     if (this.server) {
@@ -369,29 +452,32 @@ class WebhookListener {
 }
 
 // Commands
-export async function startListenCommand() {
-  const listener = new WebhookListener();
+export async function startSyncCommand() {
+  const daemon = new SyncDaemon();
   
   // Handle shutdown signals
   process.on('SIGINT', async () => {
-    await listener.stop();
+    await daemon.stop();
     process.exit(0);
   });
   
   process.on('SIGTERM', async () => {
-    await listener.stop();
+    await daemon.stop();
     process.exit(0);
   });
   
-  await listener.start();
+  // Save PID for stop command
+  daemon.savePID();
   
-  console.log('🎯 Listening for webhooks. Press Ctrl+C to stop.');
+  await daemon.start();
+  
+  console.log('🎯 Bidirectional sync active. Press Ctrl+C to stop.');
   
   // Keep process alive
   process.stdin.resume();
 }
 
-export async function stopListenCommand() {
+export async function stopSyncCommand() {
   try {
     const pidContent = fs.readFileSync('.webhook-listener.pid', 'utf8');
     const pid = parseInt(pidContent.trim());

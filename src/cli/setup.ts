@@ -98,17 +98,20 @@ export async function setupCommand(): Promise<void> {
     ConfigManager.createEnvExample();
     console.log('✅ Created .env.example template');
     
-    // Step 9: Create ticket templates
+    // Step 9: Create ticket templates and AI context
     await createTicketTemplate(config);
     await createTicketCreationCommand(config);
+    await createClaudeContext();
     console.log('✅ Created .linear-ticket-format.md template');
     console.log('✅ Created create-linear-ticket.md slash command');
+    console.log('✅ Created CLAUDE.md AI context file');
     
     console.log('\n🎉 Setup complete!');
     console.log('\nNext steps:');
     console.log('1. Run "md-linear-sync import" to import existing tickets');
-    console.log('2. Start syncing with "md-linear-sync push" and "md-linear-sync pull"');
+    console.log('2. Start bidirectional sync with "md-linear-sync start-sync"');
     console.log('3. Create new tickets using the .linear-ticket-format.md template');
+    console.log('4. Use CLAUDE.md for AI agent context and workflow guidance');
     
   } catch (error) {
     console.error('\n❌ Setup failed:', error instanceof Error ? error.message : 'Unknown error');
@@ -430,4 +433,25 @@ parent_id: "PAP-456"
 `;
 
   fs.writeFileSync(commandPath, commandContent);
+}
+
+async function createClaudeContext(): Promise<void> {
+  const claudePath = path.join(process.cwd(), 'CLAUDE.md');
+  
+  // Check if CLAUDE.md already exists
+  if (fs.existsSync(claudePath)) {
+    console.log('ℹ️  CLAUDE.md already exists, not overwriting');
+    return;
+  }
+  
+  // Read the template
+  const templatePath = path.join(__dirname, '..', '..', 'CLAUDEMD-template.md');
+  
+  if (!fs.existsSync(templatePath)) {
+    console.log('⚠️  CLAUDEMD-template.md not found, skipping CLAUDE.md creation');
+    return;
+  }
+  
+  const templateContent = fs.readFileSync(templatePath, 'utf8');
+  fs.writeFileSync(claudePath, templateContent);
 }

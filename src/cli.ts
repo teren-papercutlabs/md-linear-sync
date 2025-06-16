@@ -11,7 +11,8 @@ const program = new Command();
 program
   .name('md-linear-sync')
   .description('Sync Linear tickets to local markdown files with status-based folder organization')
-  .version('0.1.4');
+  .version('0.1.7', '--version', 'display version number')
+  .helpOption('--help', 'display help for command');
 
 program
   .command('init')
@@ -56,19 +57,19 @@ program
   });
 
 program
-  .command('start-listen')
-  .description('Start webhook listener with auto-restart')
+  .command('start-sync')
+  .description('Start bidirectional sync (webhooks + file watching)')
   .action(async () => {
-    const { startListenCommand } = await import('./cli/listen');
-    await startListenCommand();
+    const { startSyncCommand } = await import('./cli/sync-daemon');
+    await startSyncCommand();
   });
 
 program
-  .command('stop-listen')
-  .description('Stop webhook listener')
+  .command('stop-sync')
+  .description('Stop bidirectional sync daemon')
   .action(async () => {
-    const { stopListenCommand } = await import('./cli/listen');
-    await stopListenCommand();
+    const { stopSyncCommand } = await import('./cli/sync-daemon');
+    await stopSyncCommand();
   });
 
 program
