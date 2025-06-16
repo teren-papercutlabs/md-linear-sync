@@ -156,7 +156,7 @@ async function processIssue(
     issue.parent?.identifier
   );
   
-  const filePath = path.join(process.cwd(), 'md-linear-sync', 'linear-tickets', statusFolder, filename);
+  const filePath = path.join(process.cwd(), 'linear-tickets', statusFolder, filename);
   
   // Skip if file already exists
   if (fs.existsSync(filePath)) {

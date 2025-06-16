@@ -29,7 +29,7 @@ export async function updateConfigCommand() {
     try {
       existingConfig = await ConfigManager.loadConfig();
     } catch (error) {
-      console.error('❌ No existing md-linear-sync/.linear-sync.json found. Run "md-linear-sync init" first.');
+      console.error('❌ No existing .linear-sync.json found. Run "md-linear-sync init" first.');
       process.exit(1);
     }
     
@@ -78,14 +78,14 @@ export async function updateConfigCommand() {
     };
     
     // 4. Backup and write new configuration
-    const backupPath = `md-linear-sync/.linear-sync.json.backup`;
+    const backupPath = `.linear-sync.json.backup`;
     try {
-      await fs.copyFile('md-linear-sync/.linear-sync.json', backupPath);
+      await fs.copyFile('.linear-sync.json', backupPath);
     } catch (error) {
       // Backup might fail if it's the first time, that's okay
     }
     
-    await fs.writeFile('md-linear-sync/.linear-sync.json', JSON.stringify(updatedConfig, null, 2));
+    await fs.writeFile('.linear-sync.json', JSON.stringify(updatedConfig, null, 2));
     
     // 5. Update folder structure
     await updateFolderStructure(updatedConfig.statusMapping);
@@ -156,7 +156,7 @@ function generateLabelMapping(teamLabels: any[]) {
 async function updateFolderStructure(statusMapping: any) {
   // Create all status folders
   for (const stateName of Object.keys(statusMapping)) {
-    const folderPath = path.join('md-linear-sync', 'linear-tickets', statusMapping[stateName].folder);
+    const folderPath = path.join('linear-tickets', statusMapping[stateName].folder);
     try {
       await fs.mkdir(folderPath, { recursive: true });
     } catch (error) {
@@ -166,7 +166,7 @@ async function updateFolderStructure(statusMapping: any) {
 }
 
 async function updateTicketCreationCommand(config: UpdatedConfig) {
-  const commandPath = path.join(process.cwd(), 'md-linear-sync', 'linear-ticket-creation.md');
+  const commandPath = path.join(process.cwd(), 'create-linear-ticket.md');
   
   // Check if command file exists
   try {

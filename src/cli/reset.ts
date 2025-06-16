@@ -5,7 +5,7 @@ export async function resetCommand(): Promise<void> {
   console.log('🧹 Resetting all imported tickets...\n');
 
   try {
-    const linearDir = path.join(process.cwd(), 'md-linear-sync', 'linear-tickets');
+    const linearDir = path.join(process.cwd(), 'linear-tickets');
     
     if (fs.existsSync(linearDir)) {
       // Count files before deletion
@@ -29,9 +29,9 @@ export async function resetCommand(): Promise<void> {
       // Remove the entire linear directory
       fs.rmSync(linearDir, { recursive: true, force: true });
       console.log(`✅ Removed ${totalFiles} imported tickets`);
-      console.log('📁 Deleted md-linear-sync/linear-tickets/ directory');
+      console.log('📁 Deleted linear-tickets/ directory');
     } else {
-      console.log('ℹ️  No md-linear-sync/linear-tickets/ directory found - nothing to reset');
+      console.log('ℹ️  No linear-tickets/ directory found - nothing to reset');
     }
     
     console.log('\n🎉 Reset complete! You can now run import again.');

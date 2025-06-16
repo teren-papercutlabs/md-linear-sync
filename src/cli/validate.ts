@@ -71,7 +71,7 @@ async function validateFile(filePath: string): Promise<ValidationResult> {
   try {
     config = await ConfigManager.loadConfig();
   } catch (error) {
-    throw new Error('No md-linear-sync/.linear-sync.json found. Run "md-linear-sync init" first.');
+    throw new Error('No .linear-sync.json found. Run "md-linear-sync init" first.');
   }
   
   // Parse frontmatter
