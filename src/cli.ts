@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name('md-linear-sync')
   .description('Sync Linear tickets to local markdown files with status-based folder organization')
-  .version('1.0.0');
+  .version('0.1.4');
 
 program
   .command('init')

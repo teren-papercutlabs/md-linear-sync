@@ -278,7 +278,7 @@ class WebhookListener {
       
       // Search for the ticket file across all status folders
       for (const [statusName, statusConfig] of Object.entries(config.statusMapping)) {
-        const folderPath = path.join(process.cwd(), 'linear', statusConfig.folder);
+        const folderPath = path.join(process.cwd(), 'linear-tickets', statusConfig.folder);
         
         if (fs.existsSync(folderPath)) {
           const files = fs.readdirSync(folderPath);

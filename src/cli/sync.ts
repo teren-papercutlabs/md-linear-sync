@@ -199,7 +199,7 @@ export async function pullSingleTicket(
     issue.title,
     issue.parent?.identifier
   );
-  const newFilePath = path.join(process.cwd(), 'linear', statusFolder, filename);
+  const newFilePath = path.join(process.cwd(), 'linear-tickets', statusFolder, filename);
   
   // Get comments from issue response (already included in getIssue query)
   const comments = issue.comments?.nodes || [];
@@ -252,7 +252,7 @@ async function pullAllTickets(client: LinearSyncClient, config: LinearSyncConfig
 
 // Helper functions
 function findTicketFile(ticketId: string): string | null {
-  const linearDir = path.join(process.cwd(), 'linear');
+  const linearDir = path.join(process.cwd(), 'linear-tickets');
   
   if (!fs.existsSync(linearDir)) {
     return null;
@@ -280,7 +280,7 @@ function findTicketFile(ticketId: string): string | null {
 }
 
 function getAllTicketFiles(): string[] {
-  const linearDir = path.join(process.cwd(), 'linear');
+  const linearDir = path.join(process.cwd(), 'linear-tickets');
   const files: string[] = [];
   
   if (!fs.existsSync(linearDir)) {
