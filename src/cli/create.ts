@@ -293,12 +293,10 @@ async function createTicketsInOrder(ticketFiles: TicketFile[], config: any, clie
         
         if (linearIdPattern.test(file.metadata.parent_id)) {
           // It's already a Linear ticket ID - verify it exists
-          console.log(`🔍 Verifying parent ticket: ${file.metadata.parent_id}`);
           const parentTicket = await client.findIssueByIdentifier(file.metadata.parent_id);
           
           if (parentTicket) {
             parentId = parentTicket.id;
-            console.log(`✅ Parent ticket found: ${parentTicket.title}`);
           } else {
             console.warn(`⚠️  Parent ticket ${file.metadata.parent_id} not found - creating without parent`);
           }
@@ -310,7 +308,6 @@ async function createTicketsInOrder(ticketFiles: TicketFile[], config: any, clie
           
           if (parentTicket) {
             parentId = parentTicket.id;
-            console.log(`✅ Parent resolved from file: ${parentTicket.identifier} (${parentTicket.title})`);
           } else {
             console.warn(`⚠️  Parent file ${relativePath} not processed yet - creating without parent`);
           }
@@ -406,7 +403,7 @@ async function moveFileToStatusFolder(filePath: string, status: string, config: 
     filename = `${ticket.identifier}-${sanitizedTitle}.md`;
   }
   
-  const statusFolder = path.join('linear', statusInfo.folder);
+  const statusFolder = path.join('linear-tickets', statusInfo.folder);
   const newPath = path.join(statusFolder, filename);
   
   // Create status folder if it doesn't exist
@@ -414,5 +411,4 @@ async function moveFileToStatusFolder(filePath: string, status: string, config: 
   
   // Move file to status folder
   await fs.rename(filePath, newPath);
-  console.log(`📁 Moved to: ${newPath}`);
 }
