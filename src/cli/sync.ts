@@ -201,11 +201,6 @@ export async function pullSingleTicket(
   );
   const newFilePath = path.join(process.cwd(), 'linear-tickets', statusFolder, filename);
   
-  // DEBUG: Log the constructed path
-  console.log('🔍 DEBUG - Constructed file path:', newFilePath);
-  console.log('🔍 DEBUG - Current working directory:', process.cwd());
-  console.log('🔍 DEBUG - Status folder:', statusFolder);
-  console.log('🔍 DEBUG - Filename:', filename);
   
   // Get comments from issue response (already included in getIssue query)
   const comments = issue.comments?.nodes || [];
@@ -229,9 +224,7 @@ export async function pullSingleTicket(
   }
   
   // Write file
-  console.log('🔍 DEBUG - Writing file to:', newFilePath);
   fs.writeFileSync(newFilePath, content, 'utf-8');
-  console.log('✅ DEBUG - File written successfully');
   console.log(`✅ Updated ${issue.identifier}`);
 }
 

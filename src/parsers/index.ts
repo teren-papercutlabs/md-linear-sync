@@ -58,7 +58,6 @@ export class TicketFileParser {
       
       // Add comments section if comments exist
       if (ticket.comments && ticket.comments.length > 0) {
-        console.log(`Adding ${ticket.comments.length} comments to file generation`);
         content += '\n\n' + this.COMMENTS_SEPARATOR + '\n';
         try {
           const commentsYaml = yaml.dump(ticket.comments, {
@@ -67,15 +66,10 @@ export class TicketFileParser {
             quotingType: '"',
             forceQuotes: true
           });
-          console.log(`Comments YAML generated, length: ${commentsYaml.length}`);
           content += commentsYaml;
         } catch (yamlError) {
-          console.log(`YAML serialization failed: ${yamlError}`);
-          console.log(`Failed comments data:`, JSON.stringify(ticket.comments, null, 2));
           // Fallback: skip comments section but don't fail the entire file generation
         }
-      } else {
-        console.log(`No comments to add (comments: ${ticket.comments}, length: ${ticket.comments?.length})`);
       }
       
       return content;

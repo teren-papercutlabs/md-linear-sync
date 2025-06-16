@@ -95,7 +95,6 @@ class SyncDaemon {
     // Webhook endpoint
     app.post('/webhook', async (req, res) => {
       try {
-        console.log('📥 Webhook received:', JSON.stringify(req.body, null, 2));
         
         const { action, data, type } = req.body;
         
@@ -107,7 +106,6 @@ class SyncDaemon {
           
           // Add small delay for comment creation to allow Linear to index
           if (action === 'create' && type === 'Comment') {
-            console.log('⏱️ Waiting 2s for comment indexing...');
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
           
@@ -133,15 +131,11 @@ class SyncDaemon {
 
   private async syncTicket(ticketId: string, webhookPayload: any) {
     await RetryManager.withRetry(async () => {
-      console.log(`📥 Syncing ${ticketId} from Linear...`);
-      
       const client = new LinearSyncClient(process.env.LINEAR_API_KEY!);
       const config = await ConfigManager.loadConfig();
       
       // This is the genius part - reuse existing sync logic!
       await pullSingleTicket(ticketId, client, config);
-      
-      console.log(`✅ Synced ${ticketId}`);
       
       // Send Slack notification after successful sync
       await this.sendSlackNotification(ticketId, webhookPayload, client);
@@ -263,8 +257,6 @@ class SyncDaemon {
 
   private async handleTicketDeletion(ticketId: string, webhookPayload: any) {
     await RetryManager.withRetry(async () => {
-      console.log(`🗑️ Handling deletion of ${ticketId}...`);
-      
       const { data } = webhookPayload;
       
       // Remove local file
@@ -272,8 +264,6 @@ class SyncDaemon {
       
       // Send Slack notification
       await this.sendDeletionNotification(ticketId, data);
-      
-      console.log(`✅ Handled deletion of ${ticketId}`);
     }, {}, `handle deletion of ${ticketId}`);
   }
 
@@ -297,7 +287,6 @@ class SyncDaemon {
           if (matchingFile) {
             const filePath = path.join(folderPath, matchingFile);
             fs.unlinkSync(filePath);
-            console.log(`📁 Removed local file: ${filePath}`);
             return;
           }
         }
@@ -382,14 +371,11 @@ class SyncDaemon {
       
       if (action === 'added') {
         try {
-          console.log(`📂 File moved: ${filename} - syncing status to Linear...`);
-          
           const config = await ConfigManager.loadConfig();
           const envConfig = ConfigManager.loadEnvironmentConfig();
           const client = new LinearSyncClient(envConfig.linear.apiKey);
           
           await pushSingleTicket(ticketId, client, config);
-          console.log(`✅ Synced ${ticketId} status to Linear`);
         } catch (error) {
           console.error(`❌ Failed to sync ${ticketId}:`, error instanceof Error ? error.message : 'Unknown error');
         }
