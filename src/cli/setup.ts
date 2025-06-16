@@ -102,7 +102,7 @@ export async function setupCommand(): Promise<void> {
     await createTicketTemplate(config);
     await createTicketCreationCommand(config);
     console.log('✅ Created .linear-ticket-format.md template');
-    console.log('✅ Created linear-ticket-creation.md slash command');
+    console.log('✅ Created create-linear-ticket.md slash command');
     
     console.log('\n🎉 Setup complete!');
     console.log('\nNext steps:');
@@ -349,18 +349,18 @@ Any additional context, background information, or implementation notes.
 **Instructions:** 
 - Fill in your own ticket content above
 - Remove this instructions section before creating the ticket
-- Use \`linear-ticket-creation.md\` slash command for Claude Code integration
+- Use \`create-linear-ticket.md\` slash command for Claude Code integration
 `;
 
   fs.writeFileSync(templatePath, templateContent);
 }
 
 async function createTicketCreationCommand(config: any): Promise<void> {
-  const commandPath = path.join(process.cwd(), 'md-linear-sync', 'linear-ticket-creation.md');
+  const commandPath = path.join(process.cwd(), 'md-linear-sync', 'create-linear-ticket.md');
   
   // Check if command already exists
   if (fs.existsSync(commandPath)) {
-    console.log('ℹ️  linear-ticket-creation.md already exists, not overwriting');
+    console.log('ℹ️  create-linear-ticket.md already exists, not overwriting');
     return;
   }
   
@@ -368,7 +368,7 @@ async function createTicketCreationCommand(config: any): Promise<void> {
   const availableStatuses = Object.keys(config.statusMapping);
   const availableLabels = Object.keys(config.labelMapping);
   
-  const commandContent = `# Linear Ticket Creation
+  const commandContent = `# Create Linear Ticket
 
 This slash command helps create Linear tickets from Claude Code conversations.
 
@@ -381,9 +381,9 @@ When you've discussed a feature/bug/task with Claude Code and are ready to creat
    - Use the content template from \`md-linear-sync/.linear-ticket-format.md\`
    - Fill in the frontmatter and content based on the conversation
 
-2. **Validate and create**:
-   - Validate: \`npx md-linear-sync validate md-linear-sync/new-tickets/filename.md\`
-   - Create: \`npx md-linear-sync create md-linear-sync/new-tickets/filename.md\`
+2. **Validate and create** (run from installation directory, default \`md-linear-sync\`):
+   - Validate: \`npx md-linear-sync validate new-tickets/filename.md\`
+   - Create: \`npx md-linear-sync create new-tickets\`
 
 ## File Locations
 
@@ -415,9 +415,11 @@ parent_id: "PAP-456"
 
 ## Commands
 
+**Note**: All commands must be run from the installation directory (default \`md-linear-sync\`)
+
 - \`npx md-linear-sync validate filename.md\` - Validate frontmatter
-- \`npx md-linear-sync create filename.md\` - Create Linear ticket
-- \`npx md-linear-sync create filename.md --dry-run\` - Preview without creating
+- \`npx md-linear-sync create new-tickets\` - Create Linear tickets from directory
+- \`npx md-linear-sync create new-tickets --dry-run\` - Preview without creating
 
 ## What Happens After Creation
 
