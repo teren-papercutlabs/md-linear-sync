@@ -1,4 +1,3 @@
-import ngrok from 'ngrok';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -13,7 +12,6 @@ class SyncDaemon {
   private ngrokUrl: string = '';
   private webhookId: string = '';
   private server: any;
-  private restartTimer: NodeJS.Timeout | null = null;
   private slackService: SlackNotificationServiceImpl;
   private fileWatcher: chokidar.FSWatcher | null = null;
   private moveDebounceMap: Map<string, NodeJS.Timeout> = new Map();
@@ -25,49 +23,22 @@ class SyncDaemon {
   async start() {
     console.log('🚀 Starting bidirectional sync daemon...');
     
-    // Start initial session
-    await this.startSession();
+    // Get ngrok URL from environment variable
+    this.ngrokUrl = process.env.NGROK_URL || '';
+    if (!this.ngrokUrl) {
+      throw new Error('NGROK_URL environment variable is required. Please start the tunnel first.');
+    }
     
-    // Auto-restart every 55 minutes
-    this.scheduleRestart();
+    console.log(`🌐 Using tunnel: ${this.ngrokUrl}`);
+    
+    // Update Linear webhook and start server
+    await this.updateWebhook();
+    console.log('✅ Webhook updated');
+    
+    this.startServer();
     
     // Save PID for stop command
     this.savePID();
-  }
-
-  private async startSession() {
-    try {
-      // 1. Start ngrok
-      this.ngrokUrl = await ngrok.connect(3001);
-      console.log(`🌐 Tunnel: ${this.ngrokUrl}`);
-      
-      // 2. Update Linear webhook
-      await this.updateWebhook();
-      console.log('✅ Webhook updated');
-      
-      // 3. Start express server
-      this.startServer();
-      
-    } catch (error) {
-      console.error('❌ Failed to start session:', error);
-      throw error;
-    }
-  }
-
-  private scheduleRestart() {
-    this.restartTimer = setTimeout(async () => {
-      console.log('⏰ Restarting session...');
-      try {
-        await ngrok.disconnect();
-        await this.startSession();
-        this.scheduleRestart();
-        console.log('✅ Session restarted');
-      } catch (error) {
-        console.error('❌ Restart failed:', error);
-        // Retry in 5 minutes if restart fails
-        setTimeout(() => this.scheduleRestart(), 5 * 60 * 1000);
-      }
-    }, 55 * 60 * 1000); // 55 minutes
   }
 
   private async updateWebhook() {
@@ -387,11 +358,6 @@ class SyncDaemon {
 
   async stop() {
     console.log('🛑 Stopping sync daemon...');
-    
-    // Clear timer
-    if (this.restartTimer) {
-      clearTimeout(this.restartTimer);
-    }
 
     // Stop file watcher
     if (this.fileWatcher) {
@@ -408,13 +374,6 @@ class SyncDaemon {
     // Stop server
     if (this.server) {
       this.server.close();
-    }
-    
-    // Disconnect ngrok
-    try {
-      await ngrok.disconnect();
-    } catch (error) {
-      console.log('⚠️ ngrok disconnect error:', error);
     }
     
     // Remove webhook from Linear

@@ -1,6 +1,6 @@
 {
   "name": "md-linear-sync",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Sync Linear tickets to local markdown files with status-based folder organization",
   "main": "dist/index.js",
   "bin": {
@@ -58,6 +58,7 @@
     "dotenv": "^16.5.0",
     "express": "^4.18.2",
     "gray-matter": "^4.0.3",
+    "http-proxy-middleware": "^3.0.5",
     "js-yaml": "^4.1.0",
     "ngrok": "^5.0.0-beta.2",
     "prompts": "^2.4.2"

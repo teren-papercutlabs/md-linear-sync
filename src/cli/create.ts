@@ -51,7 +51,7 @@ export async function createCommand(directory: string | undefined, options: Crea
     for (const filePath of markdownFiles) {
       try {
         const metadata = await parseTicketFile(filePath);
-        const bodyContent = await extractBodyContent(filePath);
+        const bodyContent = await extractBodyContent(filePath, metadata.title);
         
         // Validate metadata
         const validationErrors = validateMetadata(metadata, config);
@@ -151,9 +151,16 @@ async function parseTicketFile(filePath: string): Promise<TicketMetadata> {
   return metadata as TicketMetadata;
 }
 
-async function extractBodyContent(filePath: string): Promise<string> {
+async function extractBodyContent(filePath: string, title?: string): Promise<string> {
   const content = await fs.readFile(filePath, 'utf-8');
-  const bodyContent = content.replace(/^---[\s\S]*?---\n/, '').trim();
+  let bodyContent = content.replace(/^---[\s\S]*?---\n/, '').trim();
+  
+  // Remove duplicate H1 title if it matches the frontmatter title
+  if (title) {
+    const h1Pattern = new RegExp(`^#\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\n`, 'i');
+    bodyContent = bodyContent.replace(h1Pattern, '').trim();
+  }
+  
   return bodyContent || 'No description provided.';
 }
 
