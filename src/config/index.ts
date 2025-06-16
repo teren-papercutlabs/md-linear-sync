@@ -3,8 +3,8 @@ import path from 'path';
 import { LinearSyncConfig, LinearApiConfig, SlackConfig } from '../types';
 
 export class ConfigManager {
-  private static readonly CONFIG_FILE = 'md-linear-sync/.linear-sync.json';
-  private static readonly ENV_EXAMPLE_FILE = 'md-linear-sync/.env.example';
+  private static readonly CONFIG_FILE = '.linear-sync.json';
+  private static readonly ENV_EXAMPLE_FILE = '.env.example';
   
   static async loadConfig(projectPath: string = process.cwd()): Promise<LinearSyncConfig> {
     const configPath = path.join(projectPath, this.CONFIG_FILE);

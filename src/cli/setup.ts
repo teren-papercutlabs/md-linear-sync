@@ -370,89 +370,61 @@ async function createTicketCreationCommand(config: any): Promise<void> {
   
   const commandContent = `# Linear Ticket Creation
 
-This command creates Linear tickets from markdown files with strict frontmatter validation and automatic dependency resolution.
+This slash command helps create Linear tickets from Claude Code conversations.
 
-## Usage
+## Workflow
 
-When user asks to create a Linear ticket from a markdown file:
+When you've discussed a feature/bug/task with Claude Code and are ready to create a Linear ticket:
 
-1. **Validate Prerequisites**:
-   \`\`\`bash
-   cd /home/teren41/environment/weaver-base/md-linear-sync && npm run build
-   cd /home/teren41/environment/weaver-base/test-md-linear-sync
-   \`\`\`
+1. **Create the ticket file**:
+   - Claude Code should create a new markdown file in \`md-linear-sync/new-tickets/\`
+   - Use the content template from \`md-linear-sync/.linear-ticket-format.md\`
+   - Fill in the frontmatter and content based on the conversation
 
-2. **Create/Validate Files**:
-   - Files must be located in current directory or subdirectories
-   - Use \`.linear-ticket-format.md\` as content template reference
-   - **CRITICAL**: Always validate with JSON output first: \`npx md-linear-sync validate filename.md --json\`
-   - **If validation fails**: Read error messages carefully and fix frontmatter, then re-validate
-   - **Only after validation passes**: Create ticket: \`npx md-linear-sync create\`
+2. **Validate and create**:
+   - Validate: \`npx md-linear-sync validate md-linear-sync/new-tickets/filename.md\`
+   - Create: \`npx md-linear-sync create md-linear-sync/new-tickets/filename.md\`
 
-## STRICT Frontmatter Requirements
+## File Locations
 
-### Required Fields:
-- **title**: String - The ticket title (cannot be empty)
+- **Ticket template**: \`md-linear-sync/.linear-ticket-format.md\` (reference for content structure)
+- **New tickets**: \`md-linear-sync/new-tickets/\` (where Claude Code creates new ticket files)
+- **Synced tickets**: \`md-linear-sync/linear-tickets/{status-folder}/\` (tickets automatically move here after creation)
 
-### Optional Fields:
-- **status**: Must be exactly one of: ${availableStatuses.join(', ')}
-- **priority**: Integer 0-4 (0=No priority, 1=Urgent, 2=High, 3=Normal, 4=Low)
-- **labels**: Array containing only: ${availableLabels.join(', ')}
-- **parent_id**: Either Linear ticket ID (format: [A-Z]+-\\d+) or relative file path to parent markdown file
+## Frontmatter Requirements
 
-### Parent-Child Relationships:
-- **Linear ticket ID**: \`parent_id: "PAP-123"\` - References existing Linear ticket
-- **File path**: \`parent_id: "../parent-feature.md"\` - References another markdown file that will be created as parent
-- **Child tickets** automatically get named with dot notation: \`PAP-123.456-child-task.md\`
+### Required:
+- **title**: String - The ticket title
 
-### Frontmatter Format:
+### Optional:
+- **status**: One of: ${availableStatuses.join(', ')}
+- **priority**: Integer 0-4 (0=No priority, 1=Urgent, 2=High, 3=Normal, 4=Low)  
+- **labels**: Array from: ${availableLabels.join(', ')}
+- **parent_id**: Linear ticket ID (e.g., "PAP-123") or path to parent markdown file
+
+### Example:
 \`\`\`yaml
 ---
-title: "Exact title string"
+title: "Implement user authentication"
 status: Todo
-priority: 3
-labels: [Feature, Improvement]
-parent_id: "PAP-123"
+priority: 2
+labels: [Feature, Backend]
+parent_id: "PAP-456"
 ---
 \`\`\`
 
-## File Location Rules
+## Commands
 
-- **Current directory**: \`filename.md\`
-- **Subdirectories**: \`subdir/filename.md\`
-- **Parent references**: \`../parent-file.md\` (for parent_id)
+- \`npx md-linear-sync validate filename.md\` - Validate frontmatter
+- \`npx md-linear-sync create filename.md\` - Create Linear ticket
+- \`npx md-linear-sync create filename.md --dry-run\` - Preview without creating
 
-## Automatic Processing
+## What Happens After Creation
 
-1. **Validation**: Checks frontmatter against current Linear configuration
-2. **Dependency Resolution**: 
-   - Linear ticket IDs verified to exist
-   - File paths resolved and checked for linear_id metadata
-   - Missing dependencies result in warnings, not errors
-3. **Ticket Creation**: Full metadata applied including labels, status, priority, parent
-4. **File Updates**: Linear metadata added (linear_id, created_at, updated_at, url)
-5. **File Movement**: Automatically moved to appropriate status folder (\`md-linear-sync/linear-tickets/{status-folder}/\`)
-
-## Error Handling
-
-- Invalid frontmatter values prevent ticket creation
-- Missing parent dependencies generate warnings but don't block creation
-- Files are only moved after successful Linear ticket creation
-- All validation errors are reported before any API calls
-
-## Integration Commands
-
-- \`npx md-linear-sync validate filename.md\` - Check file validity
-- \`npx md-linear-sync validate filename.md --json\` - JSON validation output
-- \`npx md-linear-sync create filename.md --dry-run\` - Preview what would be created
-- \`npx md-linear-sync create filename.md\` - Create the ticket
-
-## Content Template Reference
-
-Refer to \`.linear-ticket-format.md\` for proper ticket content structure including:
-- Description format
-- Acceptance criteria layout
-- Additional details sections
+1. Linear ticket is created with metadata
+2. File gets Linear ID, URL, timestamps added
+3. File automatically moves to appropriate status folder
+4. Ticket is now synced bidirectionally with Linear
 `;
 
   fs.writeFileSync(commandPath, commandContent);
