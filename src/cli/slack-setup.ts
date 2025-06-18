@@ -137,7 +137,7 @@ async function getTeamInfo(botToken: string): Promise<{ domain: string } | null>
     const response = await fetch('https://slack.com/api/team.info', {
       headers: { 'Authorization': `Bearer ${botToken}` }
     });
-    const result = await response.json();
+    const result = await response.json() as any;
     return result.ok ? { domain: result.team.domain } : null;
   } catch (error) {
     return null;
@@ -156,7 +156,7 @@ async function inviteBotToChannel(botToken: string, channelId: string): Promise<
     })
   });
   
-  const result = await response.json();
+  const result = await response.json() as any;
   if (!result.ok && result.error !== 'already_in_channel') {
     throw new Error(result.error);
   }
@@ -175,7 +175,7 @@ async function createSlackChannel(botToken: string, channelName: string): Promis
     })
   });
   
-  const result = await response.json();
+  const result = await response.json() as any;
   
   if (!result.ok) {
     if (result.error === 'name_taken') {
@@ -184,7 +184,7 @@ async function createSlackChannel(botToken: string, channelName: string): Promis
       const infoResponse = await fetch(`https://slack.com/api/conversations.list?types=public_channel&limit=200`, {
         headers: { 'Authorization': `Bearer ${botToken}` }
       });
-      const infoResult = await infoResponse.json();
+      const infoResult = await infoResponse.json() as any;
       const existingChannel = infoResult.channels?.find((ch: any) => ch.name === channelName);
       return existingChannel?.id || '';
     }
@@ -210,7 +210,7 @@ async function testSlackBot(botToken: string, channel: string): Promise<void> {
       })
     });
     
-    const result = await response.json();
+    const result = await response.json() as any;
     
     if (result.ok) {
       console.log('✅ Test message sent successfully!');

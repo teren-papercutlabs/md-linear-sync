@@ -1,9 +1,9 @@
-import { LinearClient } from '@linear/sdk';
+const { LinearClient } = require('@linear/sdk');
 import { LinearTeam, LinearProject, LinearWorkflowState, TicketMetadata, Comment } from '../types';
 import { RetryManager } from '../utils/RetryManager';
 
 export class LinearDiscoveryClient {
-  private client: LinearClient;
+  private client: any;
 
   constructor(apiKey: string) {
     this.client = new LinearClient({ apiKey });
@@ -12,7 +12,7 @@ export class LinearDiscoveryClient {
   async getTeams(): Promise<LinearTeam[]> {
     try {
       const response = await this.client.teams();
-      return response.nodes.map(team => ({
+      return response.nodes.map((team: any) => ({
         id: team.id,
         name: team.name,
         key: team.key
@@ -28,7 +28,7 @@ export class LinearDiscoveryClient {
       const team = await this.client.team(teamId);
       const projectsConnection = await team.projects();
       
-      return projectsConnection.nodes.map(project => ({
+      return projectsConnection.nodes.map((project: any) => ({
         id: project.id,
         name: project.name,
         description: project.description || undefined
@@ -43,12 +43,12 @@ export class LinearDiscoveryClient {
       const response = await this.client.workflowStates({
         filter: { team: { id: { eq: teamId } } }
       });
-      return response.nodes.map(state => ({
+      return response.nodes.map((state: any) => ({
         id: state.id,
         name: state.name,
         type: state.type,
         position: state.position
-      })).sort((a, b) => a.position - b.position);
+      })).sort((a: any, b: any) => a.position - b.position);
     } catch (error) {
       throw new Error(`Failed to fetch workflow states: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -103,7 +103,7 @@ export class LinearDiscoveryClient {
 }
 
 export class LinearSyncClient {
-  private client: LinearClient;
+  private client: any;
 
   constructor(apiKey: string) {
     this.client = new LinearClient({ apiKey });

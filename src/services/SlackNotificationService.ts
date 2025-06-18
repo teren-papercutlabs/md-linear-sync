@@ -296,7 +296,7 @@ export class SlackNotificationServiceImpl implements SlackNotificationService {
       })
     });
 
-    const result = await response.json();
+    const result = await response.json() as any;
     
     if (!result.ok) {
       throw new Error(`Slack API error: ${result.error}`);
