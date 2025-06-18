@@ -11,7 +11,8 @@
     "dev": "tsc --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "start-ngrok": "node start-tunnel.js"
   },
   "keywords": [
     "linear",

@@ -108,4 +108,14 @@ program
     await createCommand(directory, options);
   });
 
+program
+  .command('comment')
+  .description('Add a comment to a Linear ticket')
+  .argument('<ticket-id>', 'Ticket ID (e.g., PAP-123)')
+  .argument('<comment-text>', 'Comment text (supports markdown)')
+  .action(async (ticketId: string, commentText: string) => {
+    const { commentCommand } = await import('./cli/comment');
+    await commentCommand(ticketId, commentText);
+  });
+
 program.parse();

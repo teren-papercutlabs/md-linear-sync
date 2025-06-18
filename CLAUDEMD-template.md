@@ -88,6 +88,25 @@ npx md-linear-sync reset
 npx md-linear-sync import
 ```
 
+### Adding Comments to Tickets
+
+```bash
+# Add progress updates
+npx md-linear-sync comment PAP-123 "Implementation completed successfully"
+
+# Markdown formatted comments
+npx md-linear-sync comment PAP-123 "**Status Update:**
+- Backend API endpoints ✅
+- Frontend integration ✅
+- Tests passing ✅
+
+Ready for review!"
+
+# Quick status updates
+npx md-linear-sync comment PAP-456 "Blocked - waiting for design approval"
+npx md-linear-sync comment PAP-789 "Work in progress - ETA 2 hours"
+```
+
 ## Ticket Creation Frontmatter Requirements
 
 ### Required Fields
@@ -176,6 +195,10 @@ npx md-linear-sync stop-sync     # Stop the sync daemon
 # Create tickets
 npx md-linear-sync validate new-tickets/filename.md
 npx md-linear-sync create new-tickets
+
+# Add comments to tickets
+npx md-linear-sync comment PAP-XXX "Work completed! ✅"
+npx md-linear-sync comment PAP-XXX "**Status Update:** Ready for review"
 
 # Change status (with auto-sync running, just move files!)
 # 1. Edit frontmatter status in file

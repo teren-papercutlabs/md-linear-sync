@@ -24,7 +24,10 @@ md-linear-sync import
 # 4. Edit files, then sync changes
 md-linear-sync push PAP-431
 
-# 5. Start bidirectional sync (optional)
+# 5. Add comments to tickets
+md-linear-sync comment PAP-431 "Work completed! ✅"
+
+# 6. Start bidirectional sync (optional)
 md-linear-sync start-sync
 ```
 
@@ -248,6 +251,30 @@ md-linear-sync pull PAP-431
 # Reset and re-import all tickets (full refresh from Linear)
 md-linear-sync reset
 md-linear-sync import
+```
+
+#### `md-linear-sync comment <ticket-id> <comment-text>`
+
+Add comments to Linear tickets with full markdown support.
+
+```bash
+# Simple comment
+md-linear-sync comment PAP-431 "Work completed successfully"
+
+# Markdown comment with formatting
+md-linear-sync comment PAP-431 "**Implementation complete!**
+
+- Fixed validation errors ✅
+- Added comprehensive tests ✅  
+- Updated documentation ✅
+
+Ready for review! 🚀"
+
+# Comments support:
+# - Multi-line content
+# - Full markdown formatting (bold, lists, code blocks, etc.)
+# - Emojis and special characters
+# - Automatic sync back to local files via webhook
 ```
 
 ### Ticket Creation

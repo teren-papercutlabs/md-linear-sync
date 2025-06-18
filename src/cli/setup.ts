@@ -258,6 +258,7 @@ ${folderNames.map(name => `- \`${name}/\` - Tickets in this status`).join('\n')}
 - Move files between folders to change ticket status
 - Run \`md-linear-sync push\` to sync local changes to Linear
 - Run \`md-linear-sync pull\` to sync Linear changes to local files
+- Run \`md-linear-sync comment PAP-123 "Your comment"\` to add comments to tickets
 `;
   
   fs.writeFileSync(path.join(linearDir, 'README.md'), readmeContent);
@@ -423,6 +424,7 @@ parent_id: "PAP-456"
 - \`npx md-linear-sync validate filename.md\` - Validate frontmatter
 - \`npx md-linear-sync create new-tickets\` - Create Linear tickets from directory
 - \`npx md-linear-sync create new-tickets --dry-run\` - Preview without creating
+- \`npx md-linear-sync comment PAP-123 "Your comment"\` - Add comments to tickets
 
 ## What Happens After Creation
 
