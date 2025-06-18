@@ -1,6 +1,6 @@
 {
   "name": "md-linear-sync",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Sync Linear tickets to local markdown files with status-based folder organization",
   "main": "dist/index.js",
   "bin": {
