@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed TypeScript compilation errors
-- Improved build stability and type safety
+- Fixed build compilation and type safety issues
 
 ## [0.2.0] - 2024-06-19
 
@@ -33,9 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time comment synchronization between Linear and local markdown files
 
 ### Enhanced
-- Improved webhook system for bidirectional sync
-- Better error handling for API operations
-- Enhanced debugging and logging capabilities
+- Updated webhook system for bidirectional sync
+- Updated error handling for API operations
+- Added debugging and logging capabilities
 
 ## [0.1.x] - Previous Versions
 

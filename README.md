@@ -1,6 +1,6 @@
 # md-linear-sync
 
-Sync Linear tickets to local markdown files with status-based folder organization. Features robust bidirectional sync, comment management, and consistent duplicate title handling.
+Sync Linear tickets to local markdown files with status-based folder organization. Features bidirectional sync, comment management, and duplicate title handling.
 
 ## Installation
 
