@@ -1,6 +1,7 @@
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { TicketFile, TicketMetadata, Comment } from '../types';
+import { removeDuplicateTitle } from '../utils/contentProcessor';
 
 export class TicketFileParser {
   private static readonly COMMENTS_SEPARATOR = '---comments---';
@@ -15,7 +16,10 @@ export class TicketFileParser {
       
       // Split content to separate main content from comments
       const parts = parsed.content.split(`\n${this.COMMENTS_SEPARATOR}\n`);
-      const mainContent = parts[0].trim();
+      let mainContent = parts[0].trim();
+      
+      // Remove duplicate H1 title if it matches the frontmatter title
+      mainContent = removeDuplicateTitle(mainContent, frontmatter.title);
       
       // Parse comments from backmatter if it exists
       let comments: Comment[] = [];
